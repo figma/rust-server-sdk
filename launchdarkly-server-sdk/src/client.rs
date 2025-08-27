@@ -920,7 +920,8 @@ mod tests {
     use crate::stores::store_types::{PatchTarget, StorageItem};
     use crate::test_common::{
         self, basic_flag, basic_flag_with_prereq, basic_flag_with_prereqs_and_visibility,
-        basic_flag_with_visibility, basic_int_flag, basic_migration_flag, basic_off_flag,
+        basic_flag_with_visibility, basic_int_flag, basic_int_flag_with_user_rollout,
+        basic_migration_flag, basic_off_flag,
     };
     use crate::test_data::TestData;
     use crate::{
@@ -2661,5 +2662,59 @@ mod tests {
         );
         assert!(client.offline, "client should be in offline mode");
         assert_eq!(client.sdk_key, "sdk-key", "sdk_key should match");
+    }
+
+    #[test]
+    fn user_rollout_with_multi_context_falls_back_to_default() {
+        let (client, _event_rx) = make_mocked_client();
+        client.start_with_default_executor();
+
+        // Create a flag with rollout targeting "user" context kind (100% rollout)
+        let flag = basic_int_flag_with_user_rollout("user-rollout-flag");
+        client
+            .data_store
+            .write()
+            .upsert(
+                "user-rollout-flag",
+                PatchTarget::Flag(StorageItem::Item(flag)),
+            )
+            .expect("patch should apply");
+
+        // Create a multi-context with file and k8s contexts (no user context)
+        let file_context = ContextBuilder::new("file-key")
+            .kind("file")
+            .build()
+            .expect("Failed to create file context");
+
+        let k8s_context = ContextBuilder::new("k8s-key")
+            .kind("k8s")
+            .build()
+            .expect("Failed to create k8s context");
+
+        let multi_context = MultiContextBuilder::new()
+            .add_context(file_context)
+            .add_context(k8s_context)
+            .build()
+            .expect("Failed to build multi-context");
+
+        let default_value = 42;
+
+        // Evaluate the flag with detail - should fall back to default since rollout targets "user"
+        // but context contains only "file" and "k8s" kinds
+        let detail =
+            client.int_variation_detail(&multi_context, "user-rollout-flag", default_value);
+
+        // Should return the default value since rollout targets wrong context kind
+        assert_eq!(detail.value.unwrap(), default_value);
+
+        // Should indicate that the flag was malformed (rollout targeting wrong context kind)
+        assert!(matches!(
+            detail.reason,
+            Reason::Error {
+                error: eval::Error::MalformedFlag
+            }
+        ));
+
+        client.close();
     }
 }

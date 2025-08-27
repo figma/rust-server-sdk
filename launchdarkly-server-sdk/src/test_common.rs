@@ -164,6 +164,38 @@ pub fn basic_migration_flag(key: &str, stage: Stage) -> Flag {
     .unwrap()
 }
 
+pub fn basic_int_flag_with_user_rollout(key: &str) -> Flag {
+    serde_json::from_str(&format!(
+        r#"{{
+            "key": {},
+            "version": 42,
+            "on": true,
+            "targets": [],
+            "rules": [],
+            "prerequisites": [],
+            "fallthrough": {{
+                "rollout": {{
+                    "contextKind": "user",
+                    "variations": [
+                        {{"variation": 1, "weight": 100000}}
+                    ],
+                    "bucketBy": "key"
+                }}
+            }},
+            "offVariation": 0,
+            "variations": [0, {}],
+            "clientSideAvailability": {{
+                "usingMobileKey": false,
+                "usingEnvironmentId": false
+            }},
+            "salt": "kosher"
+        }}"#,
+        serde_json::Value::String(key.to_string()),
+        FLOAT_TO_INT_MAX,
+    ))
+    .unwrap()
+}
+
 pub fn basic_segment(key: &str) -> Segment {
     serde_json::from_str(&format!(
         r#"{{
