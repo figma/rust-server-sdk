@@ -24,7 +24,7 @@ eventsource-client = { version = "0.16.0", default-features = false }
 futures = "0.3.12"
 log = "0.4.14"
 lru = { version = "0.16.3", default-features = false }
-launchdarkly-server-sdk-evaluation = { git = "https://github.com/figma/rust-server-sdk-evaluation", tag = "1.82.0-figma-fork" }
+launchdarkly-server-sdk-evaluation = { git = "https://github.com/figma/rust-server-sdk-evaluation", tag = "2.0.2-figma-fork" }
 serde = { version = "1.0.132", features = ["derive"] }
 serde_json = { version = "1.0.73", features = ["float_roundtrip"] }
 thiserror = "2.0"
